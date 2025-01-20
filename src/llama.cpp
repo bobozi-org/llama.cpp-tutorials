@@ -1487,7 +1487,7 @@ struct llm_build_context {
         struct ggml_tensor * inpL;
 
         inpL = llm_build_inp_embd(ctx0, lctx, hparams, ubatch, model.tok_embd, cb);
-        inpL = ggml_tensor_print(ctx0, inpL); // **Note**: The return tensor must be assigned to the raw tensor, otherwise it will not be executed.
+        // inpL = ggml_tensor_print(ctx0, inpL); // **Note**: The return tensor must be assigned to the raw tensor, otherwise it will not be executed.
 
         // inp_pos - contains the positions
         struct ggml_tensor * inp_pos = build_inp_pos();
@@ -1506,7 +1506,7 @@ struct llm_build_context {
             cb(cur, "attn_norm", il);
             if (il == 0 && n_tokens == 1) {
                 // only print when layer id == 0 and batch size == 1
-                cur = ggml_tensor_print(ctx0, cur);
+                // cur = ggml_tensor_print(ctx0, cur);
             }
 
             // self-attention
@@ -1520,6 +1520,9 @@ struct llm_build_context {
                 if (model.layers[il].bq) {
                     Qcur = ggml_add(ctx0, Qcur, model.layers[il].bq);
                     cb(Qcur, "Qcur", il);
+                }
+                if (il == 0) {
+                    cur = ggml_tensor_print_pos(ctx0, cur, inp_pos, 3);
                 }
 
                 struct ggml_tensor * Kcur = llm_build_lora_mm(lctx, ctx0, model.layers[il].wk, cur);

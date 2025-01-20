@@ -1864,17 +1864,33 @@ struct ggml_tensor * ggml_add(
 
 static struct ggml_tensor * ggml_tensor_print_impl(
     struct ggml_context * ctx,
-    struct ggml_tensor  * a) {
+    struct ggml_tensor  * a,
+    struct ggml_tensor  * pos,
+    size_t print_pos) {
     struct ggml_tensor *result = ggml_view_tensor(ctx, a);
+
+    int32_t params[] = { print_pos };
+    ggml_set_op_params(result, params, sizeof(params));
+
     result->op = GGML_OP_PRINT;
     result->src[0] = a;
+    result->src[1] = pos;
     return result;
 }
 
 struct ggml_tensor * ggml_tensor_print(
     struct ggml_context * ctx,
     struct ggml_tensor  * a) {
-    return ggml_tensor_print_impl(ctx, a);
+    return ggml_tensor_print_impl(ctx, a, NULL, -1);
+}
+
+struct ggml_tensor * ggml_tensor_print_pos(
+    struct ggml_context * ctx,
+    struct ggml_tensor  * a,
+    struct ggml_tensor  * pos,
+    size_t print_pos) {
+    GGML_ASSERT(pos != NULL);
+    return ggml_tensor_print_impl(ctx, a, pos, print_pos);
 }
 
 struct ggml_tensor * ggml_add_inplace(

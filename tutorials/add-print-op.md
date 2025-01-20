@@ -27,7 +27,7 @@ cmake --build build
 ### Add a ggml print operator
 - First, we add a simple print operator: `ggml_compute_forward_print', we can base on other operators like `ggml_compute_forward_add'.
 
-- Add `ggml_op` definition and `GGML_API` in `ggml/include/ggml.h`
+- Add `ggml_op` definition and `GGML_API` in `ggml/include/ggml.h`.
 ```c
     enum ggml_op {
         // ...
@@ -49,7 +49,7 @@ cmake --build build
     // ...
 ```
 
-- Modify `GGML_OP_COUNT` assertion and `GGML_OP_SYMBOL` in `ggml/src/ggml.c`
+- Modify `GGML_OP_COUNT` assertion and `GGML_OP_SYMBOL` in `ggml/src/ggml.c`.
 ```c
 // ...
 // static_assert(GGML_OP_COUNT == 83, "GGML_OP_COUNT != 83");
@@ -67,7 +67,7 @@ static_assert(GGML_OP_COUNT == 84, "GGML_OP_COUNT != 84"); // 🆕: Modify GGML_
 // ...
 ```
 
-- Implement GGML_API for external call in `ggml/src/ggml.c`
+- Implement `GGML_API` for external call in `ggml/src/ggml.c`.
 ```c
 // ...
 // ggml_tensor_print
@@ -175,11 +175,120 @@ static int ggml_get_n_tasks(struct ggml_tensor * node, int n_threads) {
             cb(cur, "attn_norm", il);
             cb(cur, "attn_norm", il);
             if (il == 0 && n_tokens == 1) {
-                // only print when layer id == 0 and batch size == 1
+                // 🆕: only print when layer id == 0 and batch size == 1
                 cur = ggml_tensor_print(ctx0, cur);
             }
             // ...
 ```
 
 ### (Advance) Add some additional parameters
-- Sometime, we need 
+- Sometimes we need more parameters, for example we want to print tensors in specific pos, we need to pass this parameter to ggml, because the `inp_pos` is a tensor, it will be a little troublesome to filter tensors in graph building phase.
+
+- Modify `GGML_API` in `ggml/include/ggml.h`.
+```c
+    GGML_API struct ggml_tensor * ggml_tensor_print(
+            struct ggml_context * ctx,
+            struct ggml_tensor  * a);
+
+    GGML_API struct ggml_tensor * ggml_tensor_print_pos(
+            struct ggml_context * ctx,
+            struct ggml_tensor  * a,
+            struct ggml_tensor  * pos,
+            size_t print_pos);
+```
+
+- Modify `GGML_API` for external call in `ggml/src/ggml.c`.
+```c
+// ggml_tensor_print
+static struct ggml_tensor * ggml_tensor_print_impl(
+    struct ggml_context * ctx,
+    struct ggml_tensor  * a,
+    struct ggml_tensor  * pos,
+    size_t print_pos) {
+    struct ggml_tensor *result = ggml_view_tensor(ctx, a);
+
+    int32_t params[] = { print_pos };
+    ggml_set_op_params(result, params, sizeof(params));
+
+    result->op = GGML_OP_PRINT;
+    result->src[0] = a;
+    result->src[1] = pos;
+    return result;
+}
+
+struct ggml_tensor * ggml_tensor_print(
+    struct ggml_context * ctx,
+    struct ggml_tensor  * a) {
+    return ggml_tensor_print_impl(ctx, a, NULL, -1);
+}
+
+struct ggml_tensor * ggml_tensor_print_pos(
+    struct ggml_context * ctx,
+    struct ggml_tensor  * a,
+    struct ggml_tensor  * pos,
+    size_t print_pos) {
+    GGML_ASSERT(pos != NULL);
+    return ggml_tensor_print_impl(ctx, a, pos, print_pos);
+}
+```
+
+- Modify the internal logic of the ggml print operator in `ggml/src/ggml-cpu/ggml-cpu.c`.
+```c
+// ggml_compute_forward_print
+static void ggml_compute_forward_print(
+     const struct ggml_compute_params * params,
+    struct ggml_tensor * dst)
+{
+    const struct ggml_tensor * src0 = dst->src[0];
+    const struct ggml_tensor * src1 = dst->src[1]; // pos tensor
+    size_t print_pos     = ((size_t *) dst->op_params)[0];
+    const int ith = params->ith; // current thread
+
+    GGML_TENSOR_UNARY_OP_LOCALS
+    GGML_ASSERT(src0->type == GGML_TYPE_F32); // only support fp32 type
+    if (ith == 0) { // ensure only one thread can print info
+        if (src1 != NULL) {
+            GGML_ASSERT(src1->type == GGML_TYPE_I32);
+            const int32_t * pos = (const int32_t *) src1->data;
+            bool print = false;
+            for (int i = 0; i < (src1)->ne[0]; i++) {
+                if ((int32_t)print_pos == pos[i]) {
+                    print = true;
+                    break;
+                }
+            }
+            if (!print) {
+                return;
+            }
+        }
+        printf("\n%s: {%ld, %ld, %ld, %ld}\n", src0->name, ne03, ne02, ne01, ne00);
+        for (int i3 = 0; i3 < ne03; i3++) {
+            for (int i2 = 0; i2 < ne02; i2++) {
+                for (int i1 = 0; i1 < ne01; i1++) { // TODO: filter other pos in batch size
+                    for (int i0 = 0; i0 < ne00; i0++) {
+                        float * ptr = (float *) ((char *) src0->data + (i3*nb03) + (i2*nb02) + (i1*nb01) + (i0*nb00));
+                        // printf("[%d][%d][%d][%d] = %.6f\n", i3, i2, i1, i0, (double)*ptr);
+                        printf("%.6f\n", (double)*ptr);
+                    }
+                }
+            }
+        }
+    }
+}
+```
+
+- Call ggml print operator for target pos in `src/llama.cpp`.
+```cpp
+    struct ggml_cgraph * build_llama() {
+        // ...
+                struct ggml_tensor * Qcur = llm_build_lora_mm(lctx, ctx0, model.layers[il].wq, cur);
+                cb(Qcur, "Qcur", il);
+                if (model.layers[il].bq) {
+                    Qcur = ggml_add(ctx0, Qcur, model.layers[il].bq);
+                    cb(Qcur, "Qcur", il);
+                }
+                if (il == 0) {
+                    cur = ggml_tensor_print_pos(ctx0, cur, inp_pos, 3);
+                }
+        // ...
+```

@@ -4059,15 +4059,31 @@ static void ggml_compute_forward_print(
     struct ggml_tensor * dst)
 {
     const struct ggml_tensor * src0 = dst->src[0];
+    const struct ggml_tensor * src1 = dst->src[1]; // pos tensor
+    size_t print_pos     = ((size_t *) dst->op_params)[0];
     const int ith = params->ith; // current thread
 
     GGML_TENSOR_UNARY_OP_LOCALS
     GGML_ASSERT(src0->type == GGML_TYPE_F32); // only support fp32 type
     if (ith == 0) { // ensure only one thread can print info
+        if (src1 != NULL) {
+            GGML_ASSERT(src1->type == GGML_TYPE_I32);
+            const int32_t * pos = (const int32_t *) src1->data;
+            bool print = false;
+            for (int i = 0; i < (src1)->ne[0]; i++) {
+                if ((int32_t)print_pos == pos[i]) {
+                    print = true;
+                    break;
+                }
+            }
+            if (!print) {
+                return;
+            }
+        }
         printf("\n%s: {%ld, %ld, %ld, %ld}\n", src0->name, ne03, ne02, ne01, ne00);
         for (int i3 = 0; i3 < ne03; i3++) {
             for (int i2 = 0; i2 < ne02; i2++) {
-                for (int i1 = 0; i1 < ne01; i1++) {
+                for (int i1 = 0; i1 < ne01; i1++) { // TODO: filter other pos in batch size
                     for (int i0 = 0; i0 < ne00; i0++) {
                         float * ptr = (float *) ((char *) src0->data + (i3*nb03) + (i2*nb02) + (i1*nb01) + (i0*nb00));
                         // printf("[%d][%d][%d][%d] = %.6f\n", i3, i2, i1, i0, (double)*ptr);

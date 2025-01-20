@@ -789,6 +789,12 @@ extern "C" {
             struct ggml_context * ctx,
             struct ggml_tensor  * a);
 
+    GGML_API struct ggml_tensor * ggml_tensor_print_pos(
+            struct ggml_context * ctx,
+            struct ggml_tensor  * a,
+            struct ggml_tensor  * pos,
+            size_t print_pos);
+
     GGML_API struct ggml_tensor * ggml_add_inplace(
             struct ggml_context * ctx,
             struct ggml_tensor  * a,
