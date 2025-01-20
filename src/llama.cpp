@@ -1522,7 +1522,7 @@ struct llm_build_context {
                     cb(Qcur, "Qcur", il);
                 }
                 if (il == 0) {
-                    cur = ggml_tensor_print_pos(ctx0, cur, inp_pos, 3);
+                    // cur = ggml_tensor_print_pos(ctx0, cur, inp_pos, 3);
                 }
 
                 struct ggml_tensor * Kcur = llm_build_lora_mm(lctx, ctx0, model.layers[il].wk, cur);
