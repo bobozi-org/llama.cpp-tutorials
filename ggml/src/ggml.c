@@ -988,7 +988,8 @@ static const char * GGML_OP_NAME[GGML_OP_COUNT] = {
     "OPT_STEP_ADAMW",
 };
 
-static_assert(GGML_OP_COUNT == 83, "GGML_OP_COUNT != 83");
+// static_assert(GGML_OP_COUNT == 83, "GGML_OP_COUNT != 83");
+static_assert(GGML_OP_COUNT == 84, "GGML_OP_COUNT != 84");
 
 static const char * GGML_OP_SYMBOL[GGML_OP_COUNT] = {
     "none",
@@ -1083,9 +1084,11 @@ static const char * GGML_OP_SYMBOL[GGML_OP_COUNT] = {
     "cross_entropy_loss(x,y)",
     "cross_entropy_loss_back(x,y)",
     "adamw(x)",
+    "print(x)",
 };
 
-static_assert(GGML_OP_COUNT == 83, "GGML_OP_COUNT != 83");
+// static_assert(GGML_OP_COUNT == 83, "GGML_OP_COUNT != 83");
+static_assert(GGML_OP_COUNT == 84, "GGML_OP_COUNT != 84");
 
 static_assert(GGML_OP_POOL_COUNT == 2, "GGML_OP_POOL_COUNT != 2");
 
@@ -1855,6 +1858,23 @@ struct ggml_tensor * ggml_add(
         struct ggml_tensor  * a,
         struct ggml_tensor  * b) {
     return ggml_add_impl(ctx, a, b, false);
+}
+
+// ggml_tensor_print
+
+static struct ggml_tensor * ggml_tensor_print_impl(
+    struct ggml_context * ctx,
+    struct ggml_tensor  * a) {
+    struct ggml_tensor *result = ggml_view_tensor(ctx, a);
+    result->op = GGML_OP_PRINT;
+    result->src[0] = a;
+    return result;
+}
+
+struct ggml_tensor * ggml_tensor_print(
+    struct ggml_context * ctx,
+    struct ggml_tensor  * a) {
+    return ggml_tensor_print_impl(ctx, a);
 }
 
 struct ggml_tensor * ggml_add_inplace(

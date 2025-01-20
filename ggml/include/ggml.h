@@ -519,6 +519,7 @@ extern "C" {
         GGML_OP_CROSS_ENTROPY_LOSS,
         GGML_OP_CROSS_ENTROPY_LOSS_BACK,
         GGML_OP_OPT_STEP_ADAMW,
+        GGML_OP_PRINT,
 
         GGML_OP_COUNT,
     };
@@ -783,6 +784,10 @@ extern "C" {
             struct ggml_context * ctx,
             struct ggml_tensor  * a,
             struct ggml_tensor  * b);
+
+    GGML_API struct ggml_tensor * ggml_tensor_print(
+            struct ggml_context * ctx,
+            struct ggml_tensor  * a);
 
     GGML_API struct ggml_tensor * ggml_add_inplace(
             struct ggml_context * ctx,
