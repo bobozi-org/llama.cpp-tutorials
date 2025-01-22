@@ -12831,7 +12831,12 @@ static void ggml_compute_forward(struct ggml_compute_params * params, struct ggm
             } break;
         case GGML_OP_MUL_MAT:
             {
+                char name_buffer[4096];
+                char inputname[1024] = "matmul_";
+                strncat(inputname, tensor->name, strlen(tensor->name)); 
+                begin_trace(inputname, name_buffer);
                 ggml_compute_forward_mul_mat(params, tensor);
+                end_trace(name_buffer);
             } break;
         case GGML_OP_MUL_MAT_ID:
             {

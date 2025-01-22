@@ -220,6 +220,8 @@ add_library(ggml-base
             gguf.cpp)
 
 target_include_directories(ggml-base PRIVATE .)
+add_subdirectory(simple-perf)
+target_link_libraries(ggml-base PUBLIC simple-perf)
 
 add_library(ggml
             ggml-backend-reg.cpp)

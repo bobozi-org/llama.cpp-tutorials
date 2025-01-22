@@ -8624,7 +8624,11 @@ static int llama_decode_impl(
 
         llama_set_inputs(lctx, ubatch);
 
+        char name_buffer[4096];
+        begin_trace("build graph", name_buffer);
         const auto compute_status = llama_graph_compute(lctx, gf, n_threads, threadpool);
+        end_trace(name_buffer);
+
         if (compute_status != GGML_STATUS_SUCCESS) {
             kv_slot_restorer.restore(kv_self);
             switch (compute_status) {

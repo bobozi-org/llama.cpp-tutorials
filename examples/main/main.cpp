@@ -527,6 +527,7 @@ int main(int argc, char ** argv) {
         embd_inp.push_back(decoder_start_token_id);
     }
 
+    start_tracing_session();
     while ((n_remain != 0 && !is_antiprompt) || params.interactive) {
         // predict
         if (!embd.empty()) {
@@ -632,7 +633,6 @@ int main(int argc, char ** argv) {
                 }
 
                 LOG_DBG("eval: %s\n", string_from(ctx, embd).c_str());
-
                 if (llama_decode(ctx, llama_batch_get_one(&embd[i], n_eval))) {
                     LOG_ERR("%s : failed to eval\n", __func__);
                     return 1;
@@ -903,6 +903,7 @@ int main(int argc, char ** argv) {
             is_interacting = true;
         }
     }
+    stop_tracing_session("./trace.txt");
 
     if (!path_session.empty() && params.prompt_cache_all && !params.prompt_cache_ro) {
         LOG("\n%s: saving final output to session file '%s'\n", __func__, path_session.c_str());
